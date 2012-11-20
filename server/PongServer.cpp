@@ -22,7 +22,7 @@ void PongServer::waitForPlayers(uint16_t port) {
 void PongServer::_setupPlayer(Player& p, sockptr s){
 	p.s = s;
 	p.pos = _height / 2;
-	p.size = _width / 3;
+	p.size = _height / 3;
 	p.color = fullcircle::WHITE;
 }
 
