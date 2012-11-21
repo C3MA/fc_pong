@@ -12,7 +12,6 @@ Renderer::Renderer(boost::asio::io_service *client_io_service, boost::asio::ip::
 Renderer::~Renderer() { }
 
 void Renderer::idle() {
-	std::cout << "Sending meta data" << std::endl;
 	fullcircle::BinarySequenceMetadata* meta = new fullcircle::BinarySequenceMetadata();
 	meta->set_frames_per_second(_fps);
 	meta->set_width(_width);
@@ -29,7 +28,6 @@ void Renderer::ack() { }
 void Renderer::nack() { }
 
 void Renderer::start() {
-	std::cout << "Starting to render..." << std::endl;
 	double tps = 1000 / _fps;
 	_can_render = true;
 	for(;;) {
@@ -58,7 +56,6 @@ void Renderer::swapBuffers() {
 
 void Renderer::drawScene() {
 	swapBuffers();
-	fillWhole(fullcircle::BLACK);
 }
 
 void Renderer::setPixel(uint16_t x, uint16_t y, const fullcircle::RGB_t& c){

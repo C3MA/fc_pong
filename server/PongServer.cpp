@@ -9,26 +9,45 @@ void PongServer::waitForPlayers(uint16_t port) {
 
 	sockptr s1(new btcp::socket(_io_service));
 	acp.accept(*s1);
-	_setupPlayer(_p1, s1);
+	_setupPlayer(_p1, s1, "Player 1");
 	boost::thread t1(&PongServer::_handlePlayer, this, &_p1);
 
 	sockptr s2(new btcp::socket(_io_service));
 	acp.accept(*s2);
-	_setupPlayer(_p2, s2);
+	_setupPlayer(_p2, s2, "Player 2");
 	boost::thread t2(&PongServer::_handlePlayer, this, &_p2);
 }
 
 
-void PongServer::_setupPlayer(Player& p, sockptr s){
+void PongServer::_setupPlayer(Player& p, sockptr s, const char* name) {
 	p.s = s;
-	p.pos = _height / 2;
 	p.size = _height / 3;
+	p.pos = (_height / 2) - (p.size / 2);
 	p.color = fullcircle::WHITE;
+	p.name = name;
 }
 
-void PongServer::_handlePlayer(Player* p){
+void PongServer::_fillState(PongState& ps) {
+	ps.pos1 = _p1.pos;
+	ps.pos2 = _p2.pos;
+	ps.size1 = _p1.size;
+	ps.size2 = _p2.size;
+	ps.ballx = _ball.x;
+	ps.bally = _ball.y;
+	ps.direction = _ball.direction;
+	ps.move = _ball.move;
+}
+
+void PongServer::_handlePlayer(Player* p) {
+	std::string str;
+	PongState state;
 	size_t len;
 	char cmds[16];
+
+	str = "You are: ";
+	str += p->name;
+	str += "\n";
+	boost::asio::write(*(p->s), boost::asio::buffer(str, str.length()));
 
 	try {
 		for(;;) {
@@ -36,18 +55,16 @@ void PongServer::_handlePlayer(Player* p){
 			for(size_t i = 0; i < len; i++) {
 				switch(cmds[i]){
 				case '+':
-					std::cout << "Received a + command" << std::endl;
-					if(_height >= (p->pos + p->size)){
-						std::cout << "Executed a + command" << std::endl;
+					if((p->pos + p->size) != _height)
 						p->pos++;
-					}
 					break;
 				case '-':
 					if(p->pos > 0)
 						p->pos--;
 					break;
 				case '?':
-					// TODO
+					_fillState(state);
+					boost::asio::write(*(p->s), boost::asio::buffer(&state, sizeof(state)));
 					break;
 				}
 			}
@@ -170,8 +187,12 @@ void PongServer::_tick() {
 		break;
 	case CHANGE_DIRECTION:
 		_ball.direction = !_ball.direction;
-		if(_ball.move == Ball::STRAIGHT)
-			_ball.move = Ball::DOWN; // TODO rand
+		if(_ball.move == Ball::STRAIGHT){
+			if(_ball.y != 0)
+				_ball.move = Ball::UP; // TODO rand
+			else
+				_ball.move = Ball::DOWN;
+		}
 		break;
 	case NONE:
 		break;
@@ -183,12 +204,12 @@ void PongServer::_tick() {
 
 void PongServer::_score(bool who) {
 	std::cout << "SCOOOOOOOREEEEEE" << std::endl;
-	_render->fillWhole(fullcircle::YELLOW);
+	_render->fillWhole(fullcircle::BLUE);
 	_drawPlayers();
 	if(!who)
-		_render->drawRect(_width - 1, 0, 1, _height, fullcircle::WHITE);
+		_render->drawRect(_width - 1, 0, 1, _height, fullcircle::RED);
 	else
-		_render->drawRect(0, 0, 1, _height, fullcircle::WHITE);
+		_render->drawRect(0, 0, 1, _height, fullcircle::RED);
 	_render->drawScene();
 	usleep( 5 * 1000 * 1000 );
 	_setupBall(); // TODO give it to the right player
@@ -199,7 +220,7 @@ long PongServer::_msdiff(struct timeval* t1, struct timeval* t2) {
 }
 
 void PongServer::_drawBackground() {
-	_render->fillWhole(fullcircle::GREEN);
+	_render->fillWhole(fullcircle::BLACK);
 }
 
 void PongServer::_drawPlayers() {
@@ -208,7 +229,7 @@ void PongServer::_drawPlayers() {
 }
 
 void PongServer::_drawBall() {
-	_render->setPixel(_ball.x, _ball.y, fullcircle::YELLOW);
+	_render->setPixel(_ball.x, _ball.y, fullcircle::GREEN);
 }
 
 void PongServer::_mainLoop() {
